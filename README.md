@@ -1,2 +1,2 @@
-# branchdb
-Create a new database instance based off of your git branch
+# branchdb-python
+Python bindings for utilizing the branchdb library
