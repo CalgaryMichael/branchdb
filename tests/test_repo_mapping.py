@@ -1,12 +1,11 @@
 import io
 import os
 import re
-import json
 import unittest
-from unittest import mock
+import mock
 from contextlib import contextmanager
-from git import Repo
 from branchdb.repo_mapping import RepoMapping, mapping_parent
+from branchdb import utils
 
 
 @contextmanager
@@ -16,8 +15,10 @@ def make_temp_mapping_file(file_name, content=None):
     if not os.path.exists(mapping_parent):
         os.makedirs(mapping_parent)
     file_loc = os.path.join(mapping_parent, file_name)
-    with io.open(file_loc, "w") as file_:
-        json.dump(content, file_)
+
+    # resolve difference in py27 & py36
+    utils.json_dump(file_loc, content)
+
     with io.open(file_loc, "rb") as file_:
         yield file_
     os.remove(file_loc)
