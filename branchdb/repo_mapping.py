@@ -1,21 +1,27 @@
+# coding=utf-8
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import io
 import os
 import json
-from slugify import slugify
-
-mapping_parent = os.path.expanduser("~/.branchdb/mappings")
+from branchdb import utils
 
 
 class RepoMapping(object):
-    def __init__(self, repo):
-        self.repo = repo
+    __mapping_file_location = None
+
+    def __init__(self, project_root):
+        self.project_root = project_root
         self.mapping = self._build_mapping()
         self.__changes = False
 
     def __enter__(self):
         return self
 
-    def __exit__(self):
+    def __exit__(self, *args, **kwargs):
         if self.__changes is True:
             self._update_mapping()
 
@@ -26,17 +32,21 @@ class RepoMapping(object):
         self.mapping[key] = value
         self.__changes = True
 
+    @property
+    def mapping_file_location(self):
+        if self.__mapping_file_location is None:
+            branchdb_folder = os.path.join(self.project_root, ".branchdb")
+            if os.path.exists(branchdb_folder) is False:
+                os.makedirs(branchdb_folder)
+            self.__mapping_file_location = os.path.join(branchdb_folder, "mappings.json")
+        return self.__mapping_file_location
+
     def _build_mapping(self):
-        file_loc = self._get_mapping_file_loc(self.repo.active_branch.name)
-        with io.open(file_loc, "rb") as mapping_file:
+        if os.path.exists(self.mapping_file_location) is False:
+            return {}
+        with io.open(self.mapping_file_location, "rb") as mapping_file:
             return json.load(mapping_file)
 
     def _update_mapping(self):
-        file_loc = self._get_mapping_file_loc(self.repo.active_branch.name)
-        json.dump(self.mapping, file_loc)
+        utils.json_dump(self.mapping, self.mapping_file_location)
         self.__changes = False
-
-    def _get_mapping_file_loc(self, branch_name):
-        normalized_branch_name = slugify(branch_name, separator="_")
-        file_name = u"{}.json".format(normalized_branch_name)
-        return os.path.join(mapping_parent, file_name)

@@ -2,7 +2,7 @@ import io
 import json
 
 
-def json_dump(file_loc, content):
+def json_dump(content, file_loc):
     """Resolve difference between Python2.7 and Python3.7 versions of json.dump"""
     try:
         with io.open(file_loc, "w") as file_:
