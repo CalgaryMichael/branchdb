@@ -7,22 +7,23 @@ from __future__ import unicode_literals
 import io
 import os
 import json
+from slugify import slugify
 from branchdb import utils
 
 
 class RepoMapping(object):
     __mapping_file_location = None
 
-    def __init__(self, project_root):
+    def __init__(self, project_root, build=True):
         self.project_root = project_root
-        self.mapping = self._build_mapping()
-        self.__changes = False
+        self.mapping = self._build_mapping() if build is True else {}
+        self._changes = False
 
     def __enter__(self):
         return self
 
     def __exit__(self, *args, **kwargs):
-        if self.__changes is True:
+        if self._changes is True:
             self._update_mapping()
 
     def __getitem__(self, key):
@@ -30,23 +31,35 @@ class RepoMapping(object):
 
     def __setitem__(self, key, value):
         self.mapping[key] = value
-        self.__changes = True
+        self._changes = True
 
     @property
     def mapping_file_location(self):
+        """Returns the location of the mapping file of the current project"""
         if self.__mapping_file_location is None:
-            branchdb_folder = os.path.join(self.project_root, ".branchdb")
+            branchdb_folder = os.path.join(self.project_root, u".branchdb")
             if os.path.exists(branchdb_folder) is False:
                 os.makedirs(branchdb_folder)
-            self.__mapping_file_location = os.path.join(branchdb_folder, "mappings.json")
+            self.__mapping_file_location = os.path.join(branchdb_folder, u"mappings.json")
         return self.__mapping_file_location
 
     def _build_mapping(self):
         if os.path.exists(self.mapping_file_location) is False:
             return {}
-        with io.open(self.mapping_file_location, "rb") as mapping_file:
+        with io.open(self.mapping_file_location, u"rb") as mapping_file:
             return json.load(mapping_file)
 
     def _update_mapping(self):
         utils.json_dump(self.mapping, self.mapping_file_location)
-        self.__changes = False
+        self._changes = False
+
+    def get_or_create(self, branch_name, dry_run=False):
+        """Returns the database name for a branch, and saves it to mapping file if none exists"""
+        try:
+            db_name = self[branch_name]
+        except KeyError:
+            normalized_branch_name = slugify(branch_name, separator=u"_")
+            db_name = u"branch_{}".format(normalized_branch_name)
+            if dry_run is False:
+                self[branch_name] = db_name
+        return db_name

@@ -15,4 +15,4 @@ def get_repo():
 
 
 def get_project_root(repo):
-    return repo.git.rev_parse("--show-toplevel")
+    return repo.git.rev_parse(u"--show-toplevel")
