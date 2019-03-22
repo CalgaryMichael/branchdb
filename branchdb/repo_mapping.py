@@ -34,6 +34,14 @@ class RepoMapping(object):
         self._changes = True
 
     @property
+    def branches(self):
+        return list(self.mapping.keys())
+
+    @property
+    def databases(self):
+        return list(self.mapping.values())
+
+    @property
     def mapping_file_location(self):
         """Returns the location of the mapping file of the current project"""
         if self.__mapping_file_location is None:

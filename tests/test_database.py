@@ -12,11 +12,8 @@ from . import mocking, data_folder
 project_root = os.path.join(data_folder, u"mock_project_root")
 
 
-@mock.patch("branchdb.database.git_tools.get_repo")
-@mock.patch("branchdb.database.git_tools.get_project_root")
-def test_get_current_branch_name(mock_root, mock_repo):
-    mock_repo.return_value = mocking.MockRepo(u"test")
-    mock_root.return_value = project_root
-
+@mock.patch("branchdb.database.git_tools.get_branch_and_root")
+def test_get_current_branch_name(mock_branch_root):
+    mock_branch_root.return_value = "test", project_root
     db_name = database.get_current_database(dry_run=True)
     assert db_name == "branch_test"
