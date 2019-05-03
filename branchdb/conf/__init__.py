@@ -33,11 +33,13 @@ class LazySettings(object):
 
     def __setattr__(self, key, value):
         if key == "_wrapped":
+            self.__dict__.clear()
             self.__dict__["_wrapped"] = value
         else:
             if self._wrapped is None:
                 self._setup()
-            setattr(self, key, value)
+            self.__dict__.pop(key, None)
+            setattr(self._wrapped, key, value)
 
     def _setup(self):
         settings_module = project_settings_module()

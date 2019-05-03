@@ -12,6 +12,7 @@ import pytest
 import mock
 from mock import PropertyMock
 from contextlib import contextmanager
+from branchdb.conf import settings
 from branchdb.repo_mapping import RepoMapping
 from branchdb import utils
 from . import data_folder
@@ -170,3 +171,10 @@ def test_get_or_create__new_branch__dry_run():
     db_name = repo_mapping.get_or_create(u"test", dry_run=True)
     assert db_name == "branch_test"
     assert repo_mapping.mapping == {u"master": u"branch_master"}
+
+
+def test_get_db_name():
+    repo_mapping = RepoMapping(project_root, build=False)
+    settings.NAME_SEPARATOR = "-"
+    db_name = repo_mapping._get_db_name(u"test")
+    assert db_name == "branch-test"

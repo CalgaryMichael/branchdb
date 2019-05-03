@@ -15,18 +15,15 @@ def get_current_database(dry_run=False):
     return db_name
 
 
-def create_database(branch_name=None, engine=None):
+def create_database(branch_name, engine):
     """Creates a database for the given git branch"""
     project_root = git_tools.get_project_root()
     with repo_mapping.RepoMapping(project_root) as mapping:
         db_name = mapping.get_or_create(branch_name)
-    if engine is None:
-        # TODO: get engine if there is None
-        pass
-    return engine.create_db(db_name)
+    return engine.create_database(db_name)
 
 
-def delete_database(branch_name, engine=None):
+def delete_database(branch_name, engine):
     """Delete the database for the associated branch"""
     project_root = git_tools.get_project_root()
     with repo_mapping.RepoMapping(project_root) as mapping:
@@ -34,10 +31,7 @@ def delete_database(branch_name, engine=None):
             db_name = mapping[branch_name]
         except KeyError:
             raise Exception("No database registered for branch '{}'".format(branch_name))
-    if engine is None:
-        # TODO: get engine if there is None
-        pass
-    return engine.delete_db(db_name)
+    return engine.delete_database(db_name)
 
 
 def clean_databases(engine=None):

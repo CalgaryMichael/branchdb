@@ -9,6 +9,7 @@ import os
 import json
 from slugify import slugify
 from branchdb import utils
+from branchdb.conf import settings
 
 
 class RepoMapping(object):
@@ -66,8 +67,15 @@ class RepoMapping(object):
         try:
             db_name = self[branch_name]
         except KeyError:
-            normalized_branch_name = slugify(branch_name, separator=u"_")
-            db_name = u"branch_{}".format(normalized_branch_name)
+            db_name = self._get_db_name(branch_name)
             if dry_run is False:
                 self[branch_name] = db_name
         return db_name
+
+    def _get_db_name(self, branch_name):
+        normalized_branch_name = slugify(branch_name, separator=settings.NAME_SEPARATOR)
+        return settings.NAME_SCHEME.format(
+            prefix=settings.NAME_PREFIX,
+            separator=settings.NAME_SEPARATOR,
+            branch=normalized_branch_name,
+            suffix=settings.NAME_SUFFIX)
