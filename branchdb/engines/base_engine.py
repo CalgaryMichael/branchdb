@@ -30,8 +30,11 @@ class EngineMetaclass(type):
 class BaseEngine(object):
     slug = None
 
+    def __init__(self):
+        self.connetion = None
+
     @abc.abstractmethod
-    def connect(self, username=None, password=None):
+    def connect(self, username=None, password=None, host="localhost", port=""):
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -39,9 +42,14 @@ class BaseEngine(object):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def create_db(self, database_name):
+    def all_databases(self):
+        """Returns a list of all database names that currently exist"""
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def delete_db(self, database_name):
+    def create_database(self, database_name):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def delete_database(self, database_name):
         raise NotImplementedError()
