@@ -8,6 +8,7 @@ import io
 import os.path
 import psycopg2.sql
 from contextlib import contextmanager
+from branchdb.errors import DatabaseError
 from branchdb.engines import BaseEngine
 
 
@@ -30,7 +31,6 @@ class PostgresEngine(BaseEngine):
 
     def connect(self, username=None, password=None, host="localhost", port=""):
         self.connection = psycopg2.connect(user=username, password=password, host=host, port=port)
-        self.connection.autocommit = True
         return self.connection
 
     @contextmanager
@@ -50,3 +50,37 @@ class PostgresEngine(BaseEngine):
             for row in cursor.fetchall():
                 databases.append(row[0])
         return databases
+
+    def create_database(self, database_name):
+        if self.database_exists(database_name) is True:
+            raise DatabaseError("Database '{}' already exists.".format(database_name))
+        command = get_command("create_database", database=database_name, template=None)
+        with self.get_cursor() as cursor:
+            try:
+                cursor.execute(command)
+            except Exception as e:
+                self.connection.rollback()
+                raise e
+            else:
+                command = get_command("grant_privileges", user=self.connection.info.username)
+                try:
+                    cursor.execute(command)
+                except Exception as e:
+                    self.connection.rollback()
+                    raise e
+                self.connection.commit()
+        return True
+
+    def delete_database(self, database_name):
+        if self.database_exists(database_name) is False:
+            raise DatabaseError("Database '{}' does not exist.".format(database_name))
+        command = get_command("delete_database", database=database_name)
+        with self.get_cursor() as cursor:
+            try:
+                cursor.execute(command)
+            except Exception as e:
+                self.connection.rollback()
+                raise e
+            else:
+                self.connection.commit()
+        return True

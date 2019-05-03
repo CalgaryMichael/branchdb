@@ -53,3 +53,6 @@ class BaseEngine(object):
     @abc.abstractmethod
     def delete_database(self, database_name):
         raise NotImplementedError()
+
+    def database_exists(self, database_name):
+        return any(db == database_name for db in self.all_databases())
