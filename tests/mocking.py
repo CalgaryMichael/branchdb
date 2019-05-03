@@ -46,15 +46,33 @@ class MockRepo(object):
         return MockBranch(self.active_branch_name)
 
 
-def mock_postgres_cursor(fetchall_return):
-    class MockCursor(mock.Mock):
+def mock_postgres_cursor(fetchall_return=None):
+    class MockCursor(object):
+        def __init__(self, *args, **kwargs):
+            pass
+
         def execute(self, *args, **kwargs):
             pass
 
         def fetchall(self, *args, **kwargs):
             return fetchall_return
 
-    return MockCursor()
+    return MockCursor
+
+
+class MockConnectionInfo(object):
+    username = "user"
+
+
+class MockConnection(object):
+    def __init__(self, *args, **kwargs):
+        self.info = MockConnectionInfo()
+
+    def commit(self, *args, **kwargs):
+        pass
+
+    def rollback(self, *args, **kwargs):
+        pass
 
 
 class MockEngine(object):

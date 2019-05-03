@@ -21,13 +21,14 @@ def get_command(command_name, *args, **kwargs):
     for arg in args:
         composed_args += psycopg2.sql.Identifier(arg)
     composed_kwargs = dict()
-    for key, value in kwargs:
+    for key, value in kwargs.items():
         composed_kwargs[key] = psycopg2.sql.Identifier(value)
     return psycopg2.sql.SQL(command).format(*composed_args, **composed_kwargs)
 
 
 class PostgresEngine(BaseEngine):
     slug = "postgres"
+    connection = None
 
     def connect(self, username=None, password=None, host="localhost", port=""):
         self.connection = psycopg2.connect(user=username, password=password, host=host, port=port)
@@ -35,6 +36,8 @@ class PostgresEngine(BaseEngine):
 
     @contextmanager
     def get_cursor(self):
+        if self.connection is None:
+            raise DatabaseError("Must call 'PostgresEngine.connect()' before retrieving a cursor")
         cursor = self.connection.cursor()
         yield cursor
         cursor.close()
@@ -46,29 +49,30 @@ class PostgresEngine(BaseEngine):
         databases = list()
         with self.get_cursor() as cursor:
             command = get_command("all_databases")
-            cursor.execute(command)
+            self._execute(cursor, command)
             for row in cursor.fetchall():
                 databases.append(row[0])
         return databases
 
+    def _execute(self, cursor, command):
+        try:
+            cursor.execute(command)
+        except Exception as e:
+            self.connection.rollback()
+            raise e
+
     def create_database(self, database_name):
         if self.database_exists(database_name) is True:
             raise DatabaseError("Database '{}' already exists.".format(database_name))
-        command = get_command("create_database", database=database_name, template=None)
+        command = get_command("create_database", database=database_name, template="null")
         with self.get_cursor() as cursor:
-            try:
-                cursor.execute(command)
-            except Exception as e:
-                self.connection.rollback()
-                raise e
-            else:
-                command = get_command("grant_privileges", user=self.connection.info.username)
-                try:
-                    cursor.execute(command)
-                except Exception as e:
-                    self.connection.rollback()
-                    raise e
-                self.connection.commit()
+            self._execute(cursor, command)
+            privileges = get_command(
+                "grant_privileges",
+                database=database_name,
+                user=self.connection.info.username)
+            self._execute(cursor, privileges)
+            self.connection.commit()
         return True
 
     def delete_database(self, database_name):
@@ -76,11 +80,6 @@ class PostgresEngine(BaseEngine):
             raise DatabaseError("Database '{}' does not exist.".format(database_name))
         command = get_command("delete_database", database=database_name)
         with self.get_cursor() as cursor:
-            try:
-                cursor.execute(command)
-            except Exception as e:
-                self.connection.rollback()
-                raise e
-            else:
-                self.connection.commit()
+            self._execute(cursor, command)
+            self.connection.commit()
         return True
