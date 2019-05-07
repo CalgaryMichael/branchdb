@@ -8,14 +8,8 @@ import pytest
 import mock
 from psycopg2.sql import Composed, Identifier, SQL
 from branchdb.errors import DatabaseError
-from branchdb.engines import postgres, PostgresEngine
-from .mocking import mock_path, mock_postgres_cursor, MockConnection
-
-
-@mock_path("../data", modules=[postgres])
-def test_get_command__numbers():
-    result = postgres.get_command("mock_command", 1, arg2="test")
-    assert result == "SELECT 1 FROM test"
+from branchdb.engines.postgres import postgres_engine, PostgresEngine
+from .mocking import mock_postgres_cursor, MockConnection
 
 
 def test_all_databases():
@@ -36,19 +30,47 @@ def test_create_database(mock_exists, mock_execute):
     with mock.patch.object(engine, "get_cursor") as mock_cursor:
         cursor = mock_postgres_cursor()
         mock_cursor.return_value.__enter__ = cursor
-        result = engine.create_database("jazz")
+        result = engine.create_database("jazz", template=None)
 
     composed_create = Composed([
         SQL("CREATE DATABASE "),
         Identifier("jazz"),
-        SQL(" TEMPLATE "),
-        Identifier("null"),
         SQL("\n")])
     mock_execute.assert_any_call(mock.ANY, composed_create)
 
     composed_grant = Composed([
         SQL("GRANT ALL PRIVILEGES ON DATABASE "),
         Identifier("jazz"),
+        SQL(" TO "),
+        Identifier("user"),
+        SQL("\n")])
+    mock_execute.assert_any_call(mock.ANY, composed_grant)
+    assert result is True
+
+
+@mock.patch("branchdb.engines.postgres.postgres_engine.PostgresEngine._execute")
+@mock.patch("branchdb.engines.postgres.postgres_engine.PostgresEngine.database_exists")
+def test_create_database__with_template(mock_exists, mock_execute):
+    mock_exists.return_value = False
+    engine = PostgresEngine()
+    engine.connection = MockConnection()
+
+    with mock.patch.object(engine, "get_cursor") as mock_cursor:
+        cursor = mock_postgres_cursor()
+        mock_cursor.return_value.__enter__ = cursor
+        result = engine.create_database("jazz2", template="jazz1")
+
+    composed_create = Composed([
+        SQL("CREATE DATABASE "),
+        Identifier("jazz2"),
+        SQL(" TEMPLATE "),
+        Identifier("jazz1"),
+        SQL("\n")])
+    mock_execute.assert_any_call(mock.ANY, composed_create)
+
+    composed_grant = Composed([
+        SQL("GRANT ALL PRIVILEGES ON DATABASE "),
+        Identifier("jazz2"),
         SQL(" TO "),
         Identifier("user"),
         SQL("\n")])

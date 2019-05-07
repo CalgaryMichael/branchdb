@@ -1,5 +1,5 @@
 *.tox
-*.branchdb
+/.branchdb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

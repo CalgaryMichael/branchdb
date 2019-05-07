@@ -7,3 +7,5 @@ NAME_PREFIX = "branch"
 NAME_SUFFIX = ""
 
 NAME_SCHEME = "{prefix}{separator}{branch}{suffix}"
+
+DATABASE_TEMPLATE = None

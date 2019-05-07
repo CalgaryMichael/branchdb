@@ -7,6 +7,7 @@ from __future__ import unicode_literals
 import io
 import os
 import re
+import six
 import json
 import pytest
 import mock
@@ -15,24 +16,24 @@ from contextlib import contextmanager
 from branchdb.conf import settings
 from branchdb.repo_mapping import RepoMapping
 from branchdb import utils
+from .mocking import monkey_patch
 from . import data_folder
 
 project_root = os.path.join(data_folder, u"mock_project_root")
 
 
 @contextmanager
-def make_temp_mapping_file(content=None):
+def make_temp_mapping_file(tmp_path, content=None):
     if content is None:
         content = {}
-    mapping_parent = os.path.join(project_root, u".branchdb")
-    if not os.path.exists(mapping_parent):
-        os.makedirs(mapping_parent)
-    file_loc = os.path.join(mapping_parent, u"mappings.json")
-
-    utils.json_dump(content, file_loc)
-    with io.open(file_loc, u"rb") as file_:
-        yield file_
-    os.remove(file_loc)
+    d = tmp_path / ".branchdb"
+    d.mkdir()
+    file_ = d / "mappings.json"
+    if six.PY2 is True:
+        file_.write_bytes(json.dumps(content))
+    else:
+        file_.write_text(json.dumps(content))
+    yield file_
 
 
 def test_getitem():
@@ -82,25 +83,26 @@ def test_mapping_file_location__no_branchdb_folder(mock_exists, mock_make):
 
 @mock.patch(u"branchdb.repo_mapping.os.makedirs")
 @mock.patch(u"branchdb.repo_mapping.os.path.exists")
-def test_mapping_file_location__matching_file(mock_exists, mock_make):
+def test_mapping_file_location__matching_file(mock_exists, mock_make, tmp_path):
     mock_exists.return_value = True
     expected = r".*\/.branchdb\/mappings\.json"
 
-    mapping = RepoMapping(project_root, build=False)
-    with make_temp_mapping_file({u"master": u"branch_master"}):
-        file_loc = mapping.mapping_file_location
+    with make_temp_mapping_file(tmp_path, {u"master": u"branch_master"}):
+        mapping = RepoMapping(str(tmp_path), build=False)
+    file_loc = mapping.mapping_file_location
+
     assert bool(re.match(expected, file_loc)) is True
     assert mock_exists.called is True
     assert mock_make.called is False
 
 
 @mock.patch(u"branchdb.repo_mapping.os.path.exists")
-def test_mapping_file_location__cache_location(mock_exists):
+def test_mapping_file_location__cache_location(mock_exists, tmp_path):
     mock_exists.return_value = True
     expected = r".*\/.branchdb\/mappings\.json"
 
     mapping = RepoMapping(project_root, build=False)
-    with make_temp_mapping_file({u"master": u"branch_master"}):
+    with make_temp_mapping_file(tmp_path, {u"master": u"branch_master"}):
         file_loc = mapping.mapping_file_location
     assert bool(re.match(expected, file_loc)) is True
     assert mock_exists.called is True
@@ -173,8 +175,8 @@ def test_get_or_create__new_branch__dry_run():
     assert repo_mapping.mapping == {u"master": u"branch_master"}
 
 
+@monkey_patch(o=settings, k="NAME_SEPARATOR", v="-")
 def test_get_db_name():
     repo_mapping = RepoMapping(project_root, build=False)
-    settings.NAME_SEPARATOR = "-"
     db_name = repo_mapping._get_db_name(u"test")
     assert db_name == "branch-test"

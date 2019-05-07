@@ -5,6 +5,19 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from . import git_tools, repo_mapping
+from .conf import settings
+from .engines import get_engine
+
+
+def get_database_connections():
+    for db_info in settings.DATABASES:
+        engine = get_engine(db_info["ENGINE"])()
+        connect_kwargs = dict(
+            user=db_info["USER"],
+            password=db_info["PASSWORD"],
+            host=db_info["HOST"],
+            port=db_info["PORT"])
+        yield engine, connect_kwargs, db_info
 
 
 def get_current_database(dry_run=False):
@@ -15,23 +28,34 @@ def get_current_database(dry_run=False):
     return db_name
 
 
-def create_database(branch_name, engine):
-    """Creates a database for the given git branch"""
+def create_databases(branch_name, dry_run=False):
+    """Create a database for the given git branch across all connections"""
     project_root = git_tools.get_project_root()
     with repo_mapping.RepoMapping(project_root) as mapping:
-        db_name = mapping.get_or_create(branch_name)
-    return engine.create_database(db_name)
+        db_name = mapping.get_or_create(branch_name, dry_run=dry_run)
+    for engine, connect_kwargs, db_info in get_database_connections():
+        template = db_info.get("TEMPLATE", settings.DATABASE_TEMPLATE)
+        try:
+            engine.connect(**connect_kwargs)
+            engine.create_database(db_name, template=template)
+        except Exception:
+            continue
 
 
-def delete_database(branch_name, engine):
-    """Delete the database for the associated branch"""
+def delete_databases(branch_name):
+    """Delete the database for the associated branch across all database connections"""
     project_root = git_tools.get_project_root()
     with repo_mapping.RepoMapping(project_root) as mapping:
         try:
             db_name = mapping[branch_name]
         except KeyError:
             raise Exception("No database registered for branch '{}'".format(branch_name))
-    return engine.delete_database(db_name)
+    for engine, connect_kwargs, _ in get_database_connections():
+        try:
+            engine.connect(**connect_kwargs)
+            engine.delete_database(db_name)
+        except Exception:
+            continue
 
 
 def clean_databases(engine=None):

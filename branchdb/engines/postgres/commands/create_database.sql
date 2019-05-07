@@ -1,1 +1,1 @@
-CREATE DATABASE {database} TEMPLATE {template}
+CREATE DATABASE {database}

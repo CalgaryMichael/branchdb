@@ -5,11 +5,11 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import io
-import os.path
+import os
 import psycopg2.sql
 from contextlib import contextmanager
 from branchdb.errors import DatabaseError
-from branchdb.engines import BaseEngine
+from branchdb.engines.base_engine import BaseEngine
 
 
 def get_command(command_name, *args, **kwargs):
@@ -30,8 +30,8 @@ class PostgresEngine(BaseEngine):
     slug = "postgres"
     connection = None
 
-    def connect(self, username=None, password=None, host="localhost", port=""):
-        self.connection = psycopg2.connect(user=username, password=password, host=host, port=port)
+    def connect(self, user=None, password=None, host="localhost", port=""):
+        self.connection = psycopg2.connect(user=user, password=password, host=host, port=port)
         return self.connection
 
     @contextmanager
@@ -61,12 +61,18 @@ class PostgresEngine(BaseEngine):
             self.connection.rollback()
             raise e
 
-    def create_database(self, database_name):
+    def create_database(self, database_name, template=None):
         if self.database_exists(database_name) is True:
             raise DatabaseError("Database '{}' already exists.".format(database_name))
-        command = get_command("create_database", database=database_name, template="null")
+        if template is None:
+            create = get_command("create_database", database=database_name)
+        else:
+            create = get_command(
+                "create_template_database",
+                database=database_name,
+                template=template)
         with self.get_cursor() as cursor:
-            self._execute(cursor, command)
+            self._execute(cursor, create)
             privileges = get_command(
                 "grant_privileges",
                 database=database_name,
