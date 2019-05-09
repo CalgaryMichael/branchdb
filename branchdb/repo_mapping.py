@@ -34,6 +34,10 @@ class RepoMapping(object):
         self.mapping[key] = value
         self._changes = True
 
+    def __iter__(self):
+        for k, v in self.mapping.items():
+            yield k, v
+
     @property
     def branches(self):
         return list(self.mapping.keys())

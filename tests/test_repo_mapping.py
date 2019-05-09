@@ -4,11 +4,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import io
 import os
 import re
-import six
-import json
 import pytest
 import mock
 from mock import PropertyMock
@@ -16,24 +13,10 @@ from contextlib import contextmanager
 from branchdb.conf import settings
 from branchdb.repo_mapping import RepoMapping
 from branchdb import utils
-from .mocking import monkey_patch
+from .mocking import monkey_patch, make_temp_mapping_file
 from . import data_folder
 
 project_root = os.path.join(data_folder, u"mock_project_root")
-
-
-@contextmanager
-def make_temp_mapping_file(tmp_path, content=None):
-    if content is None:
-        content = {}
-    d = tmp_path / ".branchdb"
-    d.mkdir()
-    file_ = d / "mappings.json"
-    if six.PY2 is True:
-        file_.write_bytes(json.dumps(content))
-    else:
-        file_.write_text(json.dumps(content))
-    yield file_
 
 
 def test_getitem():

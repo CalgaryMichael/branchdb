@@ -53,11 +53,33 @@ def delete_databases(branch_name):
     for engine, connect_kwargs, _ in get_database_connections():
         try:
             engine.connect(**connect_kwargs)
+            _delete_databases(engine, [db_name])
+        except Exception:
+            continue
+
+
+def _delete_databases(engine, db_names):
+    for db_name in db_names:
+        try:
             engine.delete_database(db_name)
         except Exception:
             continue
 
 
-def clean_databases(engine=None):
+def clean_databases():
     """Delete all databases with stale branches"""
-    pass
+    stale_databases = _stale_databases()
+    for engine, connect_kwargs, _ in get_database_connections():
+        try:
+            engine.connect(**connect_kwargs)
+            _delete_databases(engine, stale_databases)
+        except Exception:
+            continue
+
+
+def _stale_databases():
+    repo = git_tools.get_repo()
+    project_root = git_tools.get_project_root(repo)
+    remote_branches = list(ref.name for ref in repo.remote().refs)
+    with repo_mapping.RepoMapping(project_root) as repo:
+        return list(v for k, v in repo if k not in remote_branches)

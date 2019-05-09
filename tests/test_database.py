@@ -145,3 +145,92 @@ def test_delete_databases__bad_delete(mock_connect, mock_delete, *args):
     database.delete_databases("jazz")
     assert mock_connect.call_count == 2
     assert mock_delete.call_count == 2
+
+
+@mocking.monkey_patch(o=settings, k="DATABASES", v=[mock_db_info[0]])
+@mock.patch("branchdb.database._stale_databases")
+@mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
+@mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
+def test_clean_databases(mock_connect, mock_delete, mock_stale):
+    mock_stale.return_value = ["branch_test1", "branch_test2", "branch_test3"]
+    mock_connect.return_value = True
+    mock_delete.side_effect = [True, True, True]
+
+    database.clean_databases()
+    assert mock_connect.call_count == 1
+    expected_calls = [
+        mock.call("branch_test1"),
+        mock.call("branch_test2"),
+        mock.call("branch_test3")]
+    mock_delete.assert_has_calls(expected_calls)
+
+
+@mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
+@mock.patch("branchdb.database._stale_databases")
+@mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
+@mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
+def test_clean_databases__multiple_engines(mock_connect, mock_delete, mock_stale):
+    mock_stale.return_value = ["branch_test1", "branch_test2", "branch_test3"]
+    mock_connect.return_value = True
+    mock_delete.side_effect = [True, True, True]
+
+    database.clean_databases()
+    assert mock_connect.call_count == 2
+    expected_calls = [
+        # first engine
+        mock.call("branch_test1"),
+        mock.call("branch_test2"),
+        mock.call("branch_test3"),
+
+        # second engine
+        mock.call("branch_test1"),
+        mock.call("branch_test2"),
+        mock.call("branch_test3")]
+    mock_delete.assert_has_calls(expected_calls)
+
+
+@mocking.monkey_patch(o=settings, k="DATABASES", v=[mock_db_info[0]])
+@mock.patch("branchdb.database._stale_databases")
+@mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
+@mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
+def test_clean_databases__bad_connect(mock_connect, mock_delete, mock_stale):
+    mock_stale.return_value = ["branch_test1", "branch_test2", "branch_test3"]
+    mock_connect.side_effect = Exception()
+    mock_delete.side_effect = [True, True, True]
+
+    database.clean_databases()
+    assert mock_connect.call_count == 1
+    assert mock_delete.called is False
+
+
+@mocking.monkey_patch(o=settings, k="DATABASES", v=[mock_db_info[0]])
+@mock.patch("branchdb.database._stale_databases")
+@mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
+@mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
+def test_clean_databases__bad_delete(mock_connect, mock_delete, mock_stale):
+    mock_stale.return_value = ["branch_test1", "branch_test2", "branch_test3"]
+    mock_connect.return_value = True
+    mock_delete.side_effect = [True, Exception(), True]
+
+    database.clean_databases()
+    assert mock_connect.call_count == 1
+    expected_calls = [
+        mock.call("branch_test1"),
+        mock.call("branch_test2"),
+        mock.call("branch_test3")]
+    mock_delete.assert_has_calls(expected_calls)
+
+
+@mock.patch("branchdb.database.git_tools.get_repo")
+def test_stale_databases(mock_repo, tmp_path):
+    content = {
+        "master": "branch_master",
+        "test1": "branch_test1",
+        "test2": "branch_test2",
+        "test3": "branch_test3"}
+    refs = [mocking.MockRef("master"), mocking.MockRef("test2")]
+    with mocking.make_temp_mapping_file(tmp_path, content=content):
+        mock_repo.return_value = mocking.MockRepo(project_root=str(tmp_path), refs=refs)
+
+    stale_databases = database._stale_databases()
+    assert stale_databases == ["branch_test1", "branch_test3"]
