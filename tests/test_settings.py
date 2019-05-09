@@ -12,10 +12,8 @@ from . import data_folder
 
 
 @mock.patch("branchdb.conf.os.path.exists")
-@mock.patch("branchdb.conf.git_tools.get_project_root")
-def test_project_settings_module__found(mock_root, mock_exists):
+def test_project_settings_module__found(mock_exists):
     root = os.path.join(data_folder, "mock_project_root")
-    mock_root.return_value = root
     mock_exists.return_value = True
 
     settings_module = conf.project_settings_module()
@@ -23,12 +21,8 @@ def test_project_settings_module__found(mock_root, mock_exists):
 
 
 @mock.patch("branchdb.conf.os.path.exists")
-@mock.patch("branchdb.conf.git_tools.get_project_root")
-def test_project_settings_module__not_found(mock_root, mock_exists):
-    root = os.path.join(data_folder, "mock_project_root")
-    mock_root.return_value = root
+def test_project_settings_module__not_found(mock_exists):
     mock_exists.return_value = False
-
     with pytest.raises(errors.ImproperlyConfigured):
         conf.project_settings_module()
 

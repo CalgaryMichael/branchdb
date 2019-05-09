@@ -9,7 +9,6 @@ import mock
 import pytest
 from branchdb import database
 from branchdb.conf import settings
-from branchdb.engines.postgres import PostgresEngine
 from . import mocking, data_folder
 
 project_root = os.path.join(data_folder, u"mock_project_root")
@@ -54,10 +53,9 @@ def test_get_database_connections():
 
 
 @mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
-@mock.patch("branchdb.database.git_tools.get_project_root", return_value=project_root)
 @mock.patch("branchdb.engines.base_engine.BaseEngine.create_database")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-def test_create_databases(mock_connect, mock_create, *args):
+def test_create_databases(mock_connect, mock_create):
     mock_connect.side_effect = [True, True]
     mock_create.side_effect = [True, True]
 
@@ -72,10 +70,9 @@ def test_create_databases(mock_connect, mock_create, *args):
 
 
 @mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
-@mock.patch("branchdb.database.git_tools.get_project_root", return_value=project_root)
 @mock.patch("branchdb.engines.base_engine.BaseEngine.create_database")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-def test_create_databases__bad_connect(mock_connect, mock_create, *args):
+def test_create_databases__bad_connect(mock_connect, mock_create):
     mock_connect.side_effect = [True, Exception()]
     mock_create.side_effect = [True, True]
 
@@ -85,10 +82,9 @@ def test_create_databases__bad_connect(mock_connect, mock_create, *args):
 
 
 @mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
-@mock.patch("branchdb.database.git_tools.get_project_root", return_value=project_root)
 @mock.patch("branchdb.engines.base_engine.BaseEngine.create_database")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-def test_create_databases__bad_create(mock_connect, mock_create, *args):
+def test_create_databases__bad_create(mock_connect, mock_create):
     mock_connect.side_effect = [True, True]
     mock_create.side_effect = [Exception(), True]
 
@@ -98,10 +94,9 @@ def test_create_databases__bad_create(mock_connect, mock_create, *args):
 
 
 @mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
-@mock.patch("branchdb.database.git_tools.get_project_root", return_value=project_root)
 @mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-def test_delete_databases(mock_connect, mock_delete, *args):
+def test_delete_databases(mock_connect, mock_delete):
     mock_connect.side_effect = [True, True]
     mock_delete.side_effect = [True, True]
 
@@ -111,10 +106,9 @@ def test_delete_databases(mock_connect, mock_delete, *args):
 
 
 @mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
-@mock.patch("branchdb.database.git_tools.get_project_root", return_value=project_root)
 @mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-def test_delete_databases__not_in_mapping(mock_connect, mock_delete, *args):
+def test_delete_databases__not_in_mapping(mock_connect, mock_delete):
     with pytest.raises(Exception, match="No database registered for branch 'bad'"):
         database.delete_databases("bad")
     assert mock_connect.called is False
@@ -122,10 +116,9 @@ def test_delete_databases__not_in_mapping(mock_connect, mock_delete, *args):
 
 
 @mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
-@mock.patch("branchdb.database.git_tools.get_project_root", return_value=project_root)
 @mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-def test_delete_databases__bad_connect(mock_connect, mock_delete, *args):
+def test_delete_databases__bad_connect(mock_connect, mock_delete):
     mock_connect.side_effect = [True, Exception()]
     mock_delete.side_effect = [True, True]
 
@@ -135,10 +128,9 @@ def test_delete_databases__bad_connect(mock_connect, mock_delete, *args):
 
 
 @mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
-@mock.patch("branchdb.database.git_tools.get_project_root", return_value=project_root)
 @mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-def test_delete_databases__bad_delete(mock_connect, mock_delete, *args):
+def test_delete_databases__bad_delete(mock_connect, mock_delete):
     mock_connect.side_effect = [True, True]
     mock_delete.side_effect = [Exception(), True]
 
@@ -221,8 +213,10 @@ def test_clean_databases__bad_delete(mock_connect, mock_delete, mock_stale):
     mock_delete.assert_has_calls(expected_calls)
 
 
+@mock.patch("branchdb.database.git_tools.get_project_root")
 @mock.patch("branchdb.database.git_tools.get_repo")
-def test_stale_databases(mock_repo, tmp_path):
+def test_stale_databases(mock_repo, mock_root, tmp_path):
+    mock_root.return_value = str(tmp_path)
     content = {
         "master": "branch_master",
         "test1": "branch_test1",
@@ -233,4 +227,6 @@ def test_stale_databases(mock_repo, tmp_path):
         mock_repo.return_value = mocking.MockRepo(project_root=str(tmp_path), refs=refs)
 
     stale_databases = database._stale_databases()
-    assert stale_databases == ["branch_test1", "branch_test3"]
+    expected = ["branch_test1", "branch_test3"]
+    matching_databases = (stale in expected for stale in stale_databases)
+    assert all(matching_databases) is True
