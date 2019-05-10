@@ -5,7 +5,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from collections import namedtuple
-from . import git_tools, repo_mapping
+from . import git_tools, repo_mapping, errors
 from .conf import settings
 from .engines import get_engine
 
@@ -13,14 +13,20 @@ ExecutionResult = namedtuple("ExecutionResult", ["total", "success"])
 
 
 def get_database_connections():
+    """Generator for connecting all databases"""
+    engines = list()
+    if len(settings.DATABASES) < 1:
+        raise errors.ImproperlyConfigured("Please specify at least one database connection in your settings file.")
     for db_info in settings.DATABASES:
         engine = get_engine(db_info["ENGINE"])()
-        connect_kwargs = dict(
+        engine.connect(
             user=db_info["USER"],
             password=db_info["PASSWORD"],
             host=db_info["HOST"],
             port=db_info["PORT"])
-        yield engine, connect_kwargs, db_info
+        engines.append((engine, db_info))
+    for engine, db_info in engines:
+        yield engine, db_info
 
 
 def get_current_database(dry_run=False):
@@ -37,10 +43,9 @@ def create_databases(branch_name, template=None, dry_run=False):
     with repo_mapping.RepoMapping(project_root) as mapping:
         db_name = mapping.get_or_create(branch_name, dry_run=dry_run)
     success = len(settings.DATABASES)
-    for engine, connect_kwargs, db_info in get_database_connections():
+    for engine, db_info in get_database_connections():
         _template = template or db_info.get("TEMPLATE", settings.DATABASE_TEMPLATE)
         try:
-            engine.connect(**connect_kwargs)
             engine.create_database(db_name, template=_template)
         except Exception as e:
             print(e)
@@ -56,9 +61,8 @@ def delete_all_databases():
     with repo_mapping.RepoMapping(project_root) as repo:
         db_names = list(v for k, v in repo)
     success = 0
-    for engine, connect_kwargs, _ in get_database_connections():
+    for engine, _ in get_database_connections():
         try:
-            engine.connect(**connect_kwargs)
             success += _delete_databases(engine, db_names)
         except Exception as e:
             print(e)
@@ -75,9 +79,8 @@ def delete_databases(branch_name):
         except KeyError:
             raise Exception("No database registered for branch '{}'".format(branch_name))
     success = 0
-    for engine, connect_kwargs, _ in get_database_connections():
+    for engine, _ in get_database_connections():
         try:
-            engine.connect(**connect_kwargs)
             success += _delete_databases(engine, [db_name])
         except Exception as e:
             print(e)
@@ -101,9 +104,8 @@ def clean_databases():
     """Delete all databases with stale branches"""
     stale_databases = _stale_databases()
     success = 0
-    for engine, connect_kwargs, _ in get_database_connections():
+    for engine, _ in get_database_connections():
         try:
-            engine.connect(**connect_kwargs)
             success += _delete_databases(engine, stale_databases)
         except Exception as e:
             print(e)

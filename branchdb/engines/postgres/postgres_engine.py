@@ -8,7 +8,7 @@ import io
 import os
 import psycopg2.sql
 from contextlib import contextmanager
-from branchdb.errors import DatabaseError
+from branchdb.errors import DatabaseError, ConnectionError
 from branchdb.engines.base_engine import BaseEngine
 
 
@@ -31,7 +31,10 @@ class PostgresEngine(BaseEngine):
     connection = None
 
     def connect(self, user=None, password=None, host="localhost", port=""):
-        self.connection = psycopg2.connect(user=user, password=password, host=host, port=port)
+        try:
+            self.connection = psycopg2.connect(user=user, password=password, host=host, port=port)
+        except Exception:
+            raise ConnectionError("Unable to connect to PostgreSQL database")
         self.connection.autocommit = True
         return self.connection
 

@@ -11,3 +11,7 @@ class ImproperlyConfigured(Exception):
 
 class DatabaseError(Exception):
     pass
+
+
+class ConnectionError(Exception):
+    pass
