@@ -102,6 +102,75 @@ def test_create_databases__bad_create(mock_connect, mock_create):
 @mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
 @mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
+@mock.patch("branchdb.database.git_tools.get_repo")
+def test_delete_all_databases(mock_repo, mock_connect, mock_delete, tmp_path):
+    mock_connect.side_effect = [True, True]
+    mock_delete.side_effect = [True] * 8
+
+    content = {
+        "master": "branch_master",
+        "test1": "branch_test1",
+        "test2": "branch_test2",
+        "test3": "branch_test3"}
+    with mocking.make_temp_mapping_file(tmp_path, content=content):
+        mock_repo.return_value = mocking.MockRepo(project_root=str(tmp_path))
+
+    result = database.delete_all_databases()
+    assert result.total == 8
+    assert result.success == 8
+    assert mock_connect.call_count == 2
+    assert mock_delete.call_count == 8
+
+
+@mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
+@mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
+@mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
+@mock.patch("branchdb.database.git_tools.get_repo")
+def test_delete_all_databases__bad_connect(mock_repo, mock_connect, mock_delete, tmp_path):
+    mock_connect.side_effect = [Exception(), True]
+    mock_delete.side_effect = [True] * 8
+
+    content = {
+        "master": "branch_master",
+        "test1": "branch_test1",
+        "test2": "branch_test2",
+        "test3": "branch_test3"}
+    with mocking.make_temp_mapping_file(tmp_path, content=content):
+        mock_repo.return_value = mocking.MockRepo(project_root=str(tmp_path))
+
+    result = database.delete_all_databases()
+    assert result.total == 8
+    assert result.success == 4
+    assert mock_connect.call_count == 2
+    assert mock_delete.call_count == 4
+
+
+@mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
+@mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
+@mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
+@mock.patch("branchdb.database.git_tools.get_repo")
+def test_delete_all_databases__bad_delete(mock_repo, mock_connect, mock_delete, tmp_path):
+    mock_connect.side_effect = [True, True]
+    mock_delete.side_effect = [True, True, True, Exception(), True, True, True, True]
+
+    content = {
+        "master": "branch_master",
+        "test1": "branch_test1",
+        "test2": "branch_test2",
+        "test3": "branch_test3"}
+    with mocking.make_temp_mapping_file(tmp_path, content=content):
+        mock_repo.return_value = mocking.MockRepo(project_root=str(tmp_path))
+
+    result = database.delete_all_databases()
+    assert result.total == 8
+    assert result.success == 7
+    assert mock_connect.call_count == 2
+    assert mock_delete.call_count == 8
+
+
+@mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
+@mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
+@mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
 def test_delete_databases(mock_connect, mock_delete):
     mock_connect.side_effect = [True, True]
     mock_delete.side_effect = [True, True]

@@ -49,6 +49,23 @@ def create_databases(branch_name, template=None, dry_run=False):
     return ExecutionResult(success=success, total=len(settings.DATABASES))
 
 
+def delete_all_databases():
+    """Deletes every database associated with the current project"""
+    repo = git_tools.get_repo()
+    project_root = git_tools.get_project_root(repo)
+    with repo_mapping.RepoMapping(project_root) as repo:
+        db_names = list(v for k, v in repo)
+    success = 0
+    for engine, connect_kwargs, _ in get_database_connections():
+        try:
+            engine.connect(**connect_kwargs)
+            success += _delete_databases(engine, db_names)
+        except Exception as e:
+            print(e)
+            continue
+    return ExecutionResult(success=success, total=len(db_names) * len(settings.DATABASES))
+
+
 def delete_databases(branch_name):
     """Delete the database for the associated branch across all database connections"""
     project_root = git_tools.get_project_root()

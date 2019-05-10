@@ -70,6 +70,11 @@ def main():
         action="store_true",
         default=False,
         help="Delete databases associated with stale git branches.")
+    delete_parser.add_argument(
+        "--all",
+        action="store_true",
+        default=False,
+        help="Delete all databases associated with branchdb project.")
 
     args = parser.parse_args()
     if args.parser == "tools":
@@ -132,6 +137,10 @@ def run_create_command(args, dry_run=False):
 
 def run_delete_command(args):
     repo = git_tools.get_repo()
+    if args.all:
+        database.delete_all_databases()
+        return
+
     if args.branch is not None or (args.branch is None and args.clean is False):
         branch_name = args.branch or repo.active_branch.name
         try:
