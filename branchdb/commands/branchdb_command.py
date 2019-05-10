@@ -19,7 +19,7 @@ def main():
     # tools parser
     tools_parser = subparsers.add_parser(
         "tools",
-        help="Initialize your project to be used with the branchdb tool")
+        help="General tools to retrieve information about branchdb environment")
     tools_parser.set_defaults(parser="tools")
     tools_parser.add_argument(
         "--current",
