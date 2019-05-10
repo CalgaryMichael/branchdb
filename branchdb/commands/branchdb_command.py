@@ -100,20 +100,40 @@ def run_create_command(args, dry_run=False):
     repo = git_tools.get_repo()
     branch_name = args.branch or repo.active_branch.name
     try:
-        database.create_databases(branch_name, dry_run=dry_run)
+        result = database.create_databases(branch_name, dry_run=dry_run)
     except Exception:
         print("Unable to create databases.")
     else:
-        print("Successfully created databases.")
+        if result.success == result.total:
+            print("Successfully created '{}' database{}".format(result.success, "" if result.success == 1 else "s"))
+        else:
+            print("Unable to create all databases.")
 
 
 def run_delete_command(args):
     repo = git_tools.get_repo()
     if args.branch is not None or (args.branch is None and args.clean is False):
         branch_name = args.branch or repo.active_branch.name
-        database.delete_databases(branch_name)
+        try:
+            result = database.delete_databases(branch_name)
+        except Exception:
+            print("Unable to delete databases")
+        else:
+            if result.success == result.total:
+                print("Successfully deleted '{}' database{}".format(result.success, "" if result.success == 1 else "s"))
+            else:
+                print("Unable to delete all databases.")
+
     if args.clean is True:
-        database.clean_databases()
+        try:
+            result = database.clean_databases()
+        except Exception:
+            print("Unable to clean databases")
+        else:
+            if result.success == result.total:
+                print("Successfully cleaned '{}' database{}".format(result.success, "" if result.success == 1 else "s"))
+            else:
+                print("Unable to clean all databases.")
 
 
 if __name__ == "__main__":

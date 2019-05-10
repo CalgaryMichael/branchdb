@@ -90,7 +90,7 @@ def mock_postgres_cursor(fetchall_return=None):
 
 
 class MockConnectionInfo(object):
-    username = "user"
+    user = "user"
 
 
 class MockConnection(object):

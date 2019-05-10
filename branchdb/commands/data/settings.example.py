@@ -11,7 +11,7 @@ Example:
         "USER": "user",
         "PASSWORD": "password",
         "HOST": "localhost",
-        "PORT": 8000
+        "PORT": 5432
     }]
 """
 DATABASES = []

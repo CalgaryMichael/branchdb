@@ -59,7 +59,9 @@ def test_create_databases(mock_connect, mock_create):
     mock_connect.side_effect = [True, True]
     mock_create.side_effect = [True, True]
 
-    database.create_databases("jazz", dry_run=True)
+    result = database.create_databases("jazz", dry_run=True)
+    assert result.total == 2
+    assert result.success == 2
     assert mock_connect.call_count == 2
     assert mock_create.call_count == 2
 
@@ -76,7 +78,9 @@ def test_create_databases__bad_connect(mock_connect, mock_create):
     mock_connect.side_effect = [True, Exception()]
     mock_create.side_effect = [True, True]
 
-    database.create_databases("jazz", dry_run=True)
+    result = database.create_databases("jazz", dry_run=True)
+    assert result.total == 2
+    assert result.success == 1
     assert mock_connect.call_count == 2
     assert mock_create.call_count == 1
 
@@ -88,7 +92,9 @@ def test_create_databases__bad_create(mock_connect, mock_create):
     mock_connect.side_effect = [True, True]
     mock_create.side_effect = [Exception(), True]
 
-    database.create_databases("jazz", dry_run=True)
+    result = database.create_databases("jazz", dry_run=True)
+    assert result.total == 2
+    assert result.success == 1
     assert mock_connect.call_count == 2
     assert mock_create.call_count == 2
 
@@ -100,7 +106,9 @@ def test_delete_databases(mock_connect, mock_delete):
     mock_connect.side_effect = [True, True]
     mock_delete.side_effect = [True, True]
 
-    database.delete_databases("jazz")
+    result = database.delete_databases("jazz")
+    assert result.total == 2
+    assert result.success == 2
     assert mock_connect.call_count == 2
     assert mock_delete.call_count == 2
 
@@ -122,7 +130,9 @@ def test_delete_databases__bad_connect(mock_connect, mock_delete):
     mock_connect.side_effect = [True, Exception()]
     mock_delete.side_effect = [True, True]
 
-    database.delete_databases("jazz")
+    result = database.delete_databases("jazz")
+    assert result.total == 2
+    assert result.success == 1
     assert mock_connect.call_count == 2
     assert mock_delete.call_count == 1
 
@@ -134,7 +144,9 @@ def test_delete_databases__bad_delete(mock_connect, mock_delete):
     mock_connect.side_effect = [True, True]
     mock_delete.side_effect = [Exception(), True]
 
-    database.delete_databases("jazz")
+    result = database.delete_databases("jazz")
+    assert result.total == 2
+    assert result.success == 1
     assert mock_connect.call_count == 2
     assert mock_delete.call_count == 2
 
@@ -148,7 +160,9 @@ def test_clean_databases(mock_connect, mock_delete, mock_stale):
     mock_connect.return_value = True
     mock_delete.side_effect = [True, True, True]
 
-    database.clean_databases()
+    result = database.clean_databases()
+    assert result.total == 3
+    assert result.success == 3
     assert mock_connect.call_count == 1
     expected_calls = [
         mock.call("branch_test1"),
@@ -163,10 +177,12 @@ def test_clean_databases(mock_connect, mock_delete, mock_stale):
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
 def test_clean_databases__multiple_engines(mock_connect, mock_delete, mock_stale):
     mock_stale.return_value = ["branch_test1", "branch_test2", "branch_test3"]
-    mock_connect.return_value = True
-    mock_delete.side_effect = [True, True, True]
+    mock_connect.side_effect = [True, True]
+    mock_delete.side_effect = [True] * 6
 
-    database.clean_databases()
+    result = database.clean_databases()
+    assert result.total == 6
+    assert result.success == 6
     assert mock_connect.call_count == 2
     expected_calls = [
         # first engine
@@ -190,7 +206,9 @@ def test_clean_databases__bad_connect(mock_connect, mock_delete, mock_stale):
     mock_connect.side_effect = Exception()
     mock_delete.side_effect = [True, True, True]
 
-    database.clean_databases()
+    result = database.clean_databases()
+    assert result.total == 3
+    assert result.success == 0
     assert mock_connect.call_count == 1
     assert mock_delete.called is False
 
@@ -204,7 +222,9 @@ def test_clean_databases__bad_delete(mock_connect, mock_delete, mock_stale):
     mock_connect.return_value = True
     mock_delete.side_effect = [True, Exception(), True]
 
-    database.clean_databases()
+    result = database.clean_databases()
+    assert result.total == 3
+    assert result.success == 2
     assert mock_connect.call_count == 1
     expected_calls = [
         mock.call("branch_test1"),

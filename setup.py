@@ -2,7 +2,6 @@
 
 import io
 import os
-import sys
 from setuptools import find_packages, setup
 try: # for pip >= 10
     from pip._internal.req import parse_requirements
@@ -37,10 +36,13 @@ setup(
     license="MIT License",
     description="Create a new version of your DB based off of your git branch",
     long_description=README,
-    url='https://bitbucket.org/draft2digital/checkmate',
+    url='https://github.com/CalgaryMichael/branchdb',
     platforms=["any"],
     author="Calgary Michael",
     author_email="cseth.michael@gmail.com",
+    scripts=[
+        "bin/branchdb"
+    ],
     classifiers=[
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",

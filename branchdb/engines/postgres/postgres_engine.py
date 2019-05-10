@@ -32,6 +32,7 @@ class PostgresEngine(BaseEngine):
 
     def connect(self, user=None, password=None, host="localhost", port=""):
         self.connection = psycopg2.connect(user=user, password=password, host=host, port=port)
+        self.connection.autocommit = True
         return self.connection
 
     @contextmanager
@@ -55,11 +56,7 @@ class PostgresEngine(BaseEngine):
         return databases
 
     def _execute(self, cursor, command):
-        try:
-            cursor.execute(command)
-        except Exception as e:
-            self.connection.rollback()
-            raise e
+        cursor.execute(command)
 
     def create_database(self, database_name, template=None):
         if self.database_exists(database_name) is True:
@@ -76,7 +73,7 @@ class PostgresEngine(BaseEngine):
             privileges = get_command(
                 "grant_privileges",
                 database=database_name,
-                user=self.connection.info.username)
+                user=self.connection.info.user)
             self._execute(cursor, privileges)
             self.connection.commit()
         return True
