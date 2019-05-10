@@ -8,7 +8,7 @@ import io
 import os
 import shutil
 import argparse
-from branchdb import database, git_tools, utils
+from branchdb import database, git_tools, utils, repo_mapping
 
 
 def main():
@@ -47,6 +47,14 @@ def main():
         "-b", "--branch",
         default=None,
         help="The name of the branch you would like to create databases for (default: current branch)")
+    create_parser.add_argument(
+        "-t", "--template-branch",
+        default=None,
+        help="The name of the branch you would like to template the new databases from")
+    create_parser.add_argument(
+        "-T", "--template-database",
+        default=None,
+        help="The name of the database you would like to template the new databases from")
 
     # delete parser
     delete_parser = subparsers.add_parser(
@@ -99,8 +107,20 @@ def run_init_command(args):
 def run_create_command(args, dry_run=False):
     repo = git_tools.get_repo()
     branch_name = args.branch or repo.active_branch.name
+
+    msg = "Please only use '--template-branch' or '--template-database'"
+    assert bool(args.template_branch and args.template_database) is False, msg
+    template = args.template_database or None
+    if args.template_branch:
+        project_root = git_tools.get_project_root(repo)
+        with repo_mapping.RepoMapping(project_root) as mapping:
+            template = mapping[args.template_branch]
+
     try:
-        result = database.create_databases(branch_name, dry_run=dry_run)
+        result = database.create_databases(
+            branch_name,
+            template=template,
+            dry_run=dry_run)
     except Exception:
         print("Unable to create databases.")
     else:

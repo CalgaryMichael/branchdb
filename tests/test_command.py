@@ -90,16 +90,56 @@ def test_run_init_command__existing_setup(mock_root, tmp_path):
 @mock.patch("branchdb.commands.branchdb_command.git_tools.get_repo")
 def test_run_create_command(mock_repo, mock_create):
     mock_repo.return_value = mocking.MockRepo(active_branch_name="test")
-    run_create_command(Args(branch=None), dry_run=True)
-    mock_create.assert_called_with("test", dry_run=True)
+    args = Args(branch=None, template_branch=None, template_database=None)
+    run_create_command(args, dry_run=True)
+    mock_create.assert_called_with("test", template=None, dry_run=True)
+
+
+@mock.patch("branchdb.commands.branchdb_command.database.create_databases")
+@mock.patch("branchdb.commands.branchdb_command.git_tools.get_repo")
+def test_run_create_command__template__database(mock_repo, mock_create):
+    mock_repo.return_value = mocking.MockRepo(active_branch_name="test")
+    args = Args(branch=None, template_branch=None, template_database="branch_master")
+    run_create_command(args, dry_run=True)
+    mock_create.assert_called_with("test", template="branch_master", dry_run=True)
+
+
+@mock.patch("branchdb.commands.branchdb_command.database.create_databases")
+@mock.patch("branchdb.commands.branchdb_command.git_tools.get_repo")
+def test_run_create_command__template__branch(mock_repo, mock_create):
+    mock_repo.return_value = mocking.MockRepo(active_branch_name="test")
+    args = Args(branch=None, template_branch="jazz", template_database=None)
+    run_create_command(args, dry_run=True)
+    mock_create.assert_called_with("test", template="branch_jazz", dry_run=True)
+
+
+@mock.patch("branchdb.commands.branchdb_command.database.create_databases")
+@mock.patch("branchdb.commands.branchdb_command.git_tools.get_repo")
+def test_run_create_command__template__branch__not_found(mock_repo, mock_create):
+    mock_repo.return_value = mocking.MockRepo(active_branch_name="test")
+    args = Args(branch=None, template_branch="bad", template_database=None)
+    with pytest.raises(KeyError):
+        run_create_command(args, dry_run=True)
+    assert mock_create.called is False
+
+
+@mock.patch("branchdb.commands.branchdb_command.database.create_databases")
+@mock.patch("branchdb.commands.branchdb_command.git_tools.get_repo")
+def test_run_create_command__template__branch_and_database(mock_repo, mock_create):
+    mock_repo.return_value = mocking.MockRepo(active_branch_name="test")
+    args = Args(branch=None, template_branch="test2", template_database="branch_test2")
+    with pytest.raises(AssertionError, match="Please only use '--template-branch' or '--template-database'"):
+        run_create_command(args, dry_run=True)
+    assert mock_create.called is False
 
 
 @mock.patch("branchdb.commands.branchdb_command.database.create_databases")
 @mock.patch("branchdb.commands.branchdb_command.git_tools.get_repo")
 def test_run_create_command__specified_branch(mock_repo, mock_create):
     mock_repo.return_value = mocking.MockRepo(active_branch_name="test1")
-    run_create_command(Args(branch="test2"), dry_run=True)
-    mock_create.assert_called_with("test2", dry_run=True)
+    args = Args(branch="test2", template_branch=None, template_database=None)
+    run_create_command(args, dry_run=True)
+    mock_create.assert_called_with("test2", template=None, dry_run=True)
 
 
 @mock.patch("branchdb.commands.branchdb_command.database.clean_databases")
