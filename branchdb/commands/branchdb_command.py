@@ -89,7 +89,7 @@ def main():
 
 def run_tools_command(args):
     if args.current is True:
-        print(database.get_current_database(dry_run=True))
+        print(database.get_current_database())
 
 
 def run_init_command(args):

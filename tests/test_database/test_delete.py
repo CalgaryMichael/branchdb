@@ -4,144 +4,21 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import os
 import mock
 import pytest
 import six
 from branchdb import database, errors
 from branchdb.conf import settings
-from . import mocking, data_folder
-
-project_root = os.path.join(data_folder, u"mock_project_root")
-mock_db_info = [
-    {
-        "ENGINE": "mock",
-        "TEMPLATE": "test_template",
-        "USER": "user1",
-        "PASSWORD": "password1",
-        "HOST": "localhost",
-        "PORT": "8001"
-    },
-    {
-        "ENGINE": "mock",
-        "USER": "user2",
-        "PASSWORD": "password2",
-        "HOST": "localhost",
-        "PORT": "8002"
-    }]
-
-
-@mock.patch("branchdb.database.git_tools.get_repo")
-def test_get_current_database(mock_repo, tmp_path):
-    content = {
-        "master": "branch_master",
-        "test1": "branch_test1",
-        "test2": "branch_test2",
-        "test3": "branch_test3"}
-    with mocking.make_temp_mapping_file(tmp_path, content=content):
-        mock_repo.return_value = mocking.MockRepo(active_branch_name="test1", project_root=str(tmp_path))
-
-    db_name = database.get_current_database()
-    assert db_name == "branch_test1"
-
-
-@mock.patch("branchdb.database.git_tools.get_repo")
-def test_get_current_database__not_matching(mock_repo, tmp_path):
-    content = {
-        "master": "branch_master",
-        "test1": "branch_test1",
-        "test2": "branch_test2",
-        "test3": "branch_test3"}
-    with mocking.make_temp_mapping_file(tmp_path, content=content):
-        mock_repo.return_value = mocking.MockRepo(active_branch_name="bad", project_root=str(tmp_path))
-
-    error = "Unable to retrieve active branch name. Please add a default database to your settings."
-    with pytest.raises(errors.ImproperlyConfigured, match=error):
-        database.get_current_database()
-
-
-@mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
-@mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-def test_get_database_connections(mock_connect):
-    mock_connect.side_effect = [True, True]
-    connections = list(database.get_database_connections())
-    assert mock_connect.call_count == 2
-
-    assert str(connections[0][0]) == "<MockEngine unconnected>"
-    expected_connect = dict(user="user1", password="password1", host="localhost", port="8001")
-    assert connections[0][1] == mock_db_info[0]
-
-    assert str(connections[1][0]) == "<MockEngine unconnected>"
-    assert connections[1][1] == mock_db_info[1]
-
-
-@mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
-@mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-def test_get_database_connections__bad_connect(mock_connect):
-    mock_connect.side_effect = [errors.ConnectionError(), True]
-    with pytest.raises(errors.ConnectionError):
-        connections = list(database.get_database_connections())
-
-
-@mocking.monkey_patch(o=settings, k="DATABASES", v=[])
-@mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-def test_get_database_connections__no_databases(mock_connect):
-    error = "Please specify at least one database connection in your settings file."
-    with pytest.raises(errors.ImproperlyConfigured, match=error):
-        connections = list(database.get_database_connections())
-    assert mock_connect.called is False
-
-
-@mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
-@mock.patch("branchdb.engines.base_engine.BaseEngine.create_database")
-@mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-def test_create_databases(mock_connect, mock_create):
-    mock_connect.side_effect = [True, True]
-    mock_create.side_effect = [True, True]
-
-    result = database.create_databases("jazz", dry_run=True)
-    assert result.total == 2
-    assert result.success == 2
-    assert mock_connect.call_count == 2
-    assert mock_create.call_count == 2
-
-    expected_calls = [
-        mock.call("branch_jazz", template="test_template"),
-        mock.call("branch_jazz", template=None)]
-    mock_create.assert_has_calls(expected_calls)
-
-
-@mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
-@mock.patch("branchdb.engines.base_engine.BaseEngine.create_database")
-@mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-def test_create_databases__bad_connect(mock_connect, mock_create):
-    mock_connect.side_effect = [errors.ConnectionError(), True]
-    mock_create.side_effect = [True, True]
-
-    with pytest.raises(errors.ConnectionError):
-        database.create_databases("jazz", dry_run=True)
-    assert mock_create.called is False
-
-
-@mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
-@mock.patch("branchdb.engines.base_engine.BaseEngine.create_database")
-@mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-def test_create_databases__bad_create(mock_connect, mock_create):
-    mock_connect.side_effect = [True, True]
-    mock_create.side_effect = [Exception(), True]
-
-    result = database.create_databases("jazz", dry_run=True)
-    assert result.total == 2
-    assert result.success == 1
-    assert mock_connect.call_count == 2
-    assert mock_create.call_count == 2
+from branchdb.database.delete import _stale_databases
+from .. import mocking
+from . import mock_db_info
 
 
 @mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
 @mock.patch("branchdb.repo_mapping.RepoMapping.remove")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-@mock.patch("branchdb.database.git_tools.get_repo")
+@mock.patch("branchdb.database.delete.git_tools.get_repo")
 def test_delete_all_databases(mock_repo, mock_connect, mock_delete, mock_remove, tmp_path):
     mock_connect.side_effect = [True, True]
     mock_delete.side_effect = [True] * 8
@@ -166,7 +43,7 @@ def test_delete_all_databases(mock_repo, mock_connect, mock_delete, mock_remove,
 @mock.patch("branchdb.repo_mapping.RepoMapping.remove")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-@mock.patch("branchdb.database.git_tools.get_repo")
+@mock.patch("branchdb.database.delete.git_tools.get_repo")
 def test_delete_all_databases__bad_connect(mock_repo, mock_connect, mock_delete, mock_remove, tmp_path):
     mock_connect.side_effect = [errors.ConnectionError(), True]
     mock_delete.side_effect = [True] * 8
@@ -189,7 +66,7 @@ def test_delete_all_databases__bad_connect(mock_repo, mock_connect, mock_delete,
 @mock.patch("branchdb.repo_mapping.RepoMapping.remove")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
-@mock.patch("branchdb.database.git_tools.get_repo")
+@mock.patch("branchdb.database.delete.git_tools.get_repo")
 def test_delete_all_databases__bad_delete(mock_repo, mock_connect, mock_delete, mock_remove, tmp_path):
     mock_connect.side_effect = [True, True]
     mock_delete.side_effect = [True, True, True, Exception(), True, True, True, True]
@@ -269,7 +146,7 @@ def test_delete_databases__bad_delete(mock_connect, mock_delete, mock_remove):
 
 
 @mocking.monkey_patch(o=settings, k="DATABASES", v=[mock_db_info[0]])
-@mock.patch("branchdb.database._stale_databases")
+@mock.patch("branchdb.database.delete._stale_databases")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
 def test_clean_databases(mock_connect, mock_delete, mock_stale):
@@ -289,7 +166,7 @@ def test_clean_databases(mock_connect, mock_delete, mock_stale):
 
 
 @mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
-@mock.patch("branchdb.database._stale_databases")
+@mock.patch("branchdb.database.delete._stale_databases")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
 def test_clean_databases__multiple_engines(mock_connect, mock_delete, mock_stale):
@@ -315,7 +192,7 @@ def test_clean_databases__multiple_engines(mock_connect, mock_delete, mock_stale
 
 
 @mocking.monkey_patch(o=settings, k="DATABASES", v=[mock_db_info[0]])
-@mock.patch("branchdb.database._stale_databases")
+@mock.patch("branchdb.database.delete._stale_databases")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
 def test_clean_databases__bad_connect(mock_connect, mock_delete, mock_stale):
@@ -329,7 +206,7 @@ def test_clean_databases__bad_connect(mock_connect, mock_delete, mock_stale):
 
 
 @mocking.monkey_patch(o=settings, k="DATABASES", v=[mock_db_info[0]])
-@mock.patch("branchdb.database._stale_databases")
+@mock.patch("branchdb.database.delete._stale_databases")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.delete_database")
 @mock.patch("branchdb.engines.base_engine.BaseEngine.connect")
 def test_clean_databases__bad_delete(mock_connect, mock_delete, mock_stale):
@@ -349,7 +226,7 @@ def test_clean_databases__bad_delete(mock_connect, mock_delete, mock_stale):
 
 
 @mock.patch("branchdb.repo_mapping.RepoMapping.remove_databases")
-@mock.patch("branchdb.database.git_tools.get_repo")
+@mock.patch("branchdb.database.delete.git_tools.get_repo")
 def test_stale_databases(mock_repo, mock_remove, tmp_path):
     content = {
         "master": "branch_master",
@@ -361,7 +238,7 @@ def test_stale_databases(mock_repo, mock_remove, tmp_path):
         mock_repo.return_value = mocking.MockRepo(project_root=str(tmp_path), refs=refs)
 
     expected = ["branch_test1", "branch_test3"]
-    with database._stale_databases() as stale_databases:
+    with _stale_databases() as stale_databases:
         matching_databases = (stale in expected for stale in stale_databases)
     assert all(matching_databases) is True
     try:
