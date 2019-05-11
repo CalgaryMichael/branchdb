@@ -163,3 +163,17 @@ def test_get_db_name():
     repo_mapping = RepoMapping(project_root, build=False)
     db_name = repo_mapping._get_db_name(u"test")
     assert db_name == "branch-test"
+
+
+def test_remove():
+    repo_mapping = RepoMapping(project_root, build=False)
+    repo_mapping.mapping = {u"master": u"branch_master", u"test1": u"branch_test1"}
+    repo_mapping.remove(u"test1", u"bad")
+    assert repo_mapping.mapping == {u"master": u"branch_master"}
+
+
+def test_remove_databases():
+    repo_mapping = RepoMapping(project_root, build=False)
+    repo_mapping.mapping = {u"master": u"branch_master", u"test1": u"branch_test1"}
+    repo_mapping.remove_databases(u"branch_test1", u"branch_bad")
+    assert repo_mapping.mapping == {u"master": u"branch_master"}

@@ -66,6 +66,9 @@ class RepoMapping(object):
         utils.json_dump(self.mapping, self.mapping_file_location)
         self._changes = False
 
+    def get(self, *args, **kwargs):
+        return self.mapping.get(*args, **kwargs)
+
     def get_or_create(self, branch_name, dry_run=False):
         """Returns the database name for a branch, and saves it to mapping file if none exists"""
         try:
@@ -83,3 +86,20 @@ class RepoMapping(object):
             separator=settings.NAME_SEPARATOR,
             branch=normalized_branch_name,
             suffix=settings.NAME_SUFFIX)
+
+    def remove(self, *args):
+        """Removes branch from the mapping file"""
+        for arg in args:
+            if arg in self.mapping:
+                del self.mapping[arg]
+
+    def remove_databases(self, *args):
+        """Removes branch from the mapping file based off the database name"""
+        branches = list()
+        for branch, database in self.mapping.items():
+            if len(branches) == len(args):
+                # we have found all the databases that were requested
+                break
+            if database in args:
+                branches.append(branch)
+        self.remove(*branches)
