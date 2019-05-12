@@ -9,7 +9,7 @@ import os
 import psycopg2.sql
 from contextlib import contextmanager
 from branchdb.errors import DatabaseError, ConnectionError
-from branchdb.engines.base_engine import BaseEngine
+from branchdb.engines import BaseEngine, SlugType
 
 
 def get_command(command_name, *args, **kwargs):
@@ -27,7 +27,7 @@ def get_command(command_name, *args, **kwargs):
 
 
 class PostgresEngine(BaseEngine):
-    slug = "postgres"
+    slug = SlugType.POSTGRESQL
     connection = None
 
     def connect(self, user=None, password=None, host="localhost", port=""):

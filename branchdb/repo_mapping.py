@@ -40,11 +40,15 @@ class RepoMapping(object):
 
     @property
     def branches(self):
-        return list(self.mapping.keys())
+        branches = list(self.mapping.keys())
+        branches.sort()
+        return branches
 
     @property
     def databases(self):
-        return list(self.mapping.values())
+        databases = list(self.mapping.values())
+        databases.sort()
+        return databases
 
     @property
     def mapping_file_location(self):

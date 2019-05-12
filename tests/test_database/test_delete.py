@@ -84,7 +84,9 @@ def test_delete_all_databases__bad_delete(mock_repo, mock_connect, mock_delete, 
     assert result.success == 7
     assert mock_connect.call_count == 2
     assert mock_delete.call_count == 8
-    mock_remove.assert_called_once_with(*list(content.keys()))
+    expect_removed = list(content.keys())
+    expect_removed.sort()
+    mock_remove.assert_called_once_with(*expect_removed)
 
 
 @mocking.monkey_patch(o=settings, k="DATABASES", v=mock_db_info)
