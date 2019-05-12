@@ -36,10 +36,24 @@ DATABASES = {
 }
 ```
 
-
 ### Support
 
 Current implementation supports the following databases in py2.7, py3.6, and py3.7:
 * PostgreSQL >= 9.4
 
 This library is also extensible, allowing you to create support for databases not listed by using the `Engine` class.
+
+### Setup
+
+Each of your projects needs to be initialized in order to use this tool.
+To initialize your project, run the following command:
+```bash
+branchdb init {starting database}
+```
+
+After you've run this command, go into the `.branchdb/settings.py` file to set up your database connections.
+
+Once you have done this, it is advised that you create a database for your master branch by running the following:
+```bash
+branchdb create --branch master
+```

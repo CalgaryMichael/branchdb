@@ -26,12 +26,23 @@ def main():
         action="store_true",
         default=False,
         help="Get the name of the current database")
+    tools_parser.add_argument(
+        "--set",
+        default=None,
+        help="Set a branch to use the specified database (use with '--branch' to point to a specific branch)")
+    tools_parser.add_argument(
+        "--branch",
+        default=None,
+        help="Specify a branch to do a paired action on (use with '--set')")
 
     # init parser
     init_parser = subparsers.add_parser(
         "init",
         help="Initialize your project to be used with the branchdb tool")
     init_parser.set_defaults(parser="init")
+    init_parser.add_argument(
+        "starting-database",
+        help="The starting database for your project.")
     init_parser.add_argument(
         "-e", "--empty",
         action="store_true",
@@ -90,6 +101,12 @@ def main():
 def run_tools_command(args):
     if args.current is True:
         print(database.get_current_database())
+    if args.set is not None:
+        active_branch, project_root = git_tools.get_branch_and_root()
+        branch = args.branch or active_branch
+        with repo_mapping.RepoMapping(project_root) as mapping:
+            mapping[branch] = args.set
+        print("Set branch '{}' to point to '{}'".format(branch, args.set))
 
 
 def run_init_command(args):
@@ -102,10 +119,14 @@ def run_init_command(args):
         os.mkdir(local_settings_path)
     if args.empty:
         io.open(os.path.join(local_settings_path, "settings.py"), "wb").close()
+        utils.json_dump({}, os.path.join(local_settings_path, "mappings.json"))
     else:
         example_path = os.path.join(os.path.dirname(__file__), "data", "settings.example.py")
-        shutil.copyfile(example_path, os.path.join(local_settings_path, "settings.py"))
-    utils.json_dump({}, os.path.join(local_settings_path, "mappings.json"))
+        settings_path = os.path.join(local_settings_path, "settings.py")
+        shutil.copyfile(example_path, settings_path)
+        with io.open(settings_path, "a+") as settings_file:
+            settings_file.write("DEFAULT_DATABASE_NAME = \"{}\"\n".format(args.starting_database))
+        utils.json_dump({}, os.path.join(local_settings_path, "mappings.json"))
     print("Project initialized. Please edit your settings for the database connections.")
 
 

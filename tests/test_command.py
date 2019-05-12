@@ -9,6 +9,7 @@ import os
 import pytest
 import mock
 import six
+import json
 from branchdb.commands.branchdb_command import (
     run_tools_command, run_init_command,
     run_create_command, run_delete_command)
@@ -26,17 +27,17 @@ class Args(object):
 
 @mock.patch("branchdb.commands.branchdb_command.database.get_current_database")
 def test_run_tools_command__current_branch(mock_current):
-    run_tools_command(Args(current=False))
+    run_tools_command(Args(current=False, set=None))
     assert mock_current.called is False
 
-    run_tools_command(Args(current=True))
+    run_tools_command(Args(current=True, set=None))
     assert mock_current.called is True
 
 
 @mock.patch("branchdb.commands.branchdb_command.git_tools.get_project_root")
 def test_run_init_command(mock_root, tmp_path):
-    with io.open(os.path.join(command_data_folder, "settings.example.py"), "rb") as file_:
-        settings_example = file_.read()
+    with io.open(os.path.join(data_folder, "new_settings_file.py"), "rb") as file_:
+        settings_example = file_.read() % b"master_db"
 
     mock_root.return_value = str(tmp_path)
     settings_location = os.path.join(str(tmp_path), ".branchdb", "settings.py")
@@ -45,12 +46,15 @@ def test_run_init_command(mock_root, tmp_path):
     assert os.path.exists(settings_location) is False
     assert os.path.exists(mapping_location) is False
 
-    run_init_command(Args(empty=False))
+    run_init_command(Args(empty=False, starting_database="master_db"))
     assert os.path.exists(settings_location) is True
     assert os.path.exists(mapping_location) is True
 
     with io.open(settings_location, "rb") as file_:
         assert file_.read() == settings_example
+
+    with io.open(mapping_location, "rb") as file_:
+        assert json.loads(file_.read()) == {}
 
 
 @mock.patch("branchdb.commands.branchdb_command.git_tools.get_project_root")
