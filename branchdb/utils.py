@@ -7,7 +7,7 @@ from __future__ import unicode_literals
 import io
 import six
 import json
-
+import slugify
 try:
     import importlib.util
 except ImportError:
@@ -30,3 +30,13 @@ def import_source_file(name, path):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
+
+
+def get_database_name(branch_name):
+    from branchdb.conf import settings
+    normalized_branch_name = slugify.slugify(branch_name, separator=settings.NAME_SEPARATOR)
+    return settings.NAME_SCHEME.format(
+        prefix=settings.NAME_PREFIX,
+        separator=settings.NAME_SEPARATOR,
+        branch=normalized_branch_name,
+        suffix=settings.NAME_SUFFIX)

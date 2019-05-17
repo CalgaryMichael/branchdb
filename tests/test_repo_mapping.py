@@ -158,13 +158,6 @@ def test_get_or_create__new_branch__dry_run():
     assert repo_mapping.mapping == {u"master": u"branch_master"}
 
 
-@monkey_patch(o=settings, k="NAME_SEPARATOR", v="-")
-def test_get_db_name():
-    repo_mapping = RepoMapping(project_root, build=False)
-    db_name = repo_mapping._get_db_name(u"test")
-    assert db_name == "branch-test"
-
-
 def test_remove():
     repo_mapping = RepoMapping(project_root, build=False)
     repo_mapping.mapping = {u"master": u"branch_master", u"test1": u"branch_test1"}

@@ -32,7 +32,7 @@ class PostgresEngine(BaseEngine):
 
     def connect(self, user=None, password=None, host="localhost", port=""):
         try:
-            self.connection = psycopg2.connect(user=user, password=password, host=host, port=port)
+            self.connection = psycopg2.connect(dbname="postgres", user=user, password=password, host=host, port=port)
         except Exception:
             raise ConnectionError("Unable to connect to PostgreSQL database")
         self.connection.autocommit = True

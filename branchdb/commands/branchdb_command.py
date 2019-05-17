@@ -147,7 +147,8 @@ def run_create_command(args, dry_run=False):
             branch_name,
             template=template,
             dry_run=dry_run)
-    except Exception:
+    except Exception as e:
+        print(e)
         print("Unable to create databases.")
     else:
         if result.success == result.total:
